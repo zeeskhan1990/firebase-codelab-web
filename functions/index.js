@@ -14,6 +14,19 @@
  * limitations under the License.
  */
 
+ /**
+  * The firebase-functions module allows us to write the cloud function trigger
+  * rules, firebase-admin allows to use the firebase platform on a server with admin
+  * access, for example to do things directly to the cloud storage, firestore, etc.
+  * And also to send fcm notifications
+  */
+
+  const functions = require('firebase-functions');
+  const admin = require('firebase-admin');
+
+  //Initialize the admin sdk
+  admin.initializeApp()
+
 // Note: You will edit this file in the follow up codelab about the Cloud Functions for Firebase.
 
 // TODO(DEVELOPER): Import the Cloud Functions for Firebase and the Firebase Admin modules here.
