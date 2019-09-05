@@ -74,7 +74,6 @@ function loadMessages() {
 
   query.onSnapshot((snapshot) => {
     snapshot.docChanges().forEach(change => {
-      debugger
       if(change.type==='removed')
         deleteMessage(change.doc.id)
       else {
@@ -96,7 +95,7 @@ async function saveImageMessage(file) {
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   })
   try {
-    const filePath = `firebase.auth().currentUser.uid/${messageRef.id}/${file.name}`
+    const filePath = `${firebase.auth().currentUser.uid}/${messageRef.id}/${file.name}`
     const fileSnapshot = await firebase.storage().ref(filePath).put(file)
     const url = await fileSnapshot.ref.getDownloadURL()
     return await messageRef.update({
@@ -106,7 +105,6 @@ async function saveImageMessage(file) {
   } catch (e) {
     console.error('There was an error uploading a file to Cloud Storage:', e);
   }
-
 }
 
 // Saves the messaging device token to the datastore.
@@ -382,6 +380,6 @@ var firestore = firebase.firestore();
 firestore.settings(settings);
  */
 // TODO: Enable Firebase Performance Monitoring.
-
+firebase.performance();
 // We load currently existing chat messages and listen to new ones.
 loadMessages();
