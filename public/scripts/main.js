@@ -43,7 +43,12 @@ function getProfilePicUrl() {
 // Returns the signed-in user's display name.
 function getUserName() {
   // TODO 5: Return the user's display name.
+  debugger
   return firebase.auth().currentUser.displayName
+}
+
+function getUserId() {
+  return firebase.auth().currentUser.uid
 }
 
 // Returns true if a user is signed-in.
@@ -56,6 +61,7 @@ function isUserSignedIn() {
 function saveMessage(messageText) {
   // TODO 7: Push a new message to Firebase.
   return firebase.firestore().collection('messages').add({
+    uid: getUserId(),
     name: getUserName(),
     text: messageText,
     profilePicUrl: getProfilePicUrl(),
@@ -89,6 +95,7 @@ function loadMessages() {
 async function saveImageMessage(file) {
   // TODO 9: Posts a new image as a message.
   const messageRef = await firebase.firestore().collection('messages').add({
+    uid: getUserId(),
     name: getUserName(),
     imageUrl: LOADING_IMAGE_URL,
     profilePicUrl: getProfilePicUrl(),

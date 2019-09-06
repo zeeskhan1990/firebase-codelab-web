@@ -1,38 +1,84 @@
-/**
- * Copyright 2017 Google Inc. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
- /**
-  * The firebase-functions module allows us to write the cloud function trigger
-  * rules, firebase-admin allows to use the firebase platform on a server with admin
-  * access, for example to do things directly to the cloud storage, firestore, etc.
-  * And also to send fcm notifications
-  */
-
   const functions = require('firebase-functions');
   const admin = require('firebase-admin');
 
   //Initialize the admin sdk
   admin.initializeApp()
 
-// Note: You will edit this file in the follow up codelab about the Cloud Functions for Firebase.
+  //Basic http callable firebase function
+  exports.helloWorld = functions.https.onRequest((request, response) => {
+      console.log(request.body.data.name)
+      response.send({
+          "data": {
+              "message": `Hello, ${request.body.data.name}!`
+          }
+      });
+  });
 
-// TODO(DEVELOPER): Import the Cloud Functions for Firebase and the Firebase Admin modules here.
+  exports.addWelcomeMessage = functions.auth.user().onCreate(async (user) => {
+    console.log('A new user signed In')
+    const fullName = user.displayName || 'Anonymous'
 
-// TODO(DEVELOPER): Write the addWelcomeMessages Function here.
+    await admin.firestore().collection('messages').add({
+      uid:0,
+      name: 'Firebase Bot',
+      profilePicUrl: '/images/firebase-logo.png',
+      text: `${fullName} signed in for the first time! Welcome!`,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  })
 
-// TODO(DEVELOPER): Write the blurOffensiveImages Function here.
+  exports.indicateImageUri = functions.runWith({memory: '1GB'}).storage.object().onFinalize(async (object) => {
+    console.log("An image has been stored!")
+  })
 
-// TODO(DEVELOPER): Write the sendNotifications Function here.
+  exports.sendNotification = functions.firestore.document('messages/{messageId}').onCreate(async (newMessage) => {
+    console.log("**** HELLLLLLO *********")
+    console.log(newMessage.data())
+    const text = newMessage.data().text
+    const payload = {
+      "notification": {
+        title: `${newMessage.data().name} posted ${text ? 'a message' : 'an image'}`,
+        body: text ? (text.length <= 100 ? text : text.substring(0, 97) + '...') : '',
+        icon: newMessage.data().profilePicUrl || '/images/profile_placeholder.png',
+        click_action: `https://${process.env.GCLOUD_PROJECT}.firebaseapp.com`,
+      }
+    }
+
+    const allTokens = await admin.firestore().collection('fcmTokens').get()
+    const currentUserId = newMessage.data().uid
+    const tokens = allTokens.docs.filter((currentToken) => {
+      console.log("From filter---")
+      console.log(currentUserId)
+      console.log(currentToken.get('uid'))
+      return currentUserId !== currentToken.get('uid')
+    }).map((currentToken) => currentToken.id)
+    console.log("******** TOKENS **********", tokens)
+    if(tokens.length > 0) {
+      const response = await admin.messaging().sendToDevice(tokens, payload)
+      const deletedTokens = await cleanupTokens(response, tokens)
+      console.log("** Deleted tokens in send Notification **")
+      console.log(deletedTokens)
+      console.log('Notify payload sent')
+    }
+  })
+
+  function cleanupTokens(response, tokens) {
+    const tokensToDelete = []
+    response.results.forEach((result, index) => {
+      const error = result.error
+      if(error) {
+        console.error('Failure sending notification to', tokens[index], error);
+        console.error(error.code)
+        // Cleanup the tokens who are not registered anymore.
+        if (error.code === 'messaging/invalid-registration-token' ||
+            error.code === 'messaging/registration-token-not-registered') {
+          console.log("Attempting to Delete token:- ", index, tokens[index])
+          const deleteTask = admin.firestore().collection('fcmTokens').doc(tokens[index]).delete();
+          console.log("** Current Token marked as deleted in clean up **")
+          console.log(deleteTask)
+          tokensToDelete.push(deleteTask);
+        }
+      }
+    })
+    return Promise.all(tokensToDelete)
+  }
