@@ -1,5 +1,5 @@
 {
-  "name": "firebase-codelab-web/",
+  "name": "firebase-codelab-web",
   "version": "1.0.0",
   "description": "This folder contains the starting code for the [Firebase: Build a Real Time Web Chat App Codelab](https://codelabs.developers.google.com/codelabs/firebase-web/).",
   "main": "index.js",
